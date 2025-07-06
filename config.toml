@@ -11,7 +11,7 @@ rv-brand = "ReVanced Extended"
 build-mode = "both"
 version = "20.23.40"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
-excluded-patches = "'Custom branding icon for YouTube' 'Custom branding name for YouTube' 'Custom header for YouTube' 'Shorts components'"
+excluded-patches = "'Custom branding icon for YouTube' 'Custom branding name for YouTube' 'Custom header for YouTube'"
 included-patches = "'Visual preferences icons for YouTube' 'Return YouTube Username'"
 patcher-args = "-e 'Theme' -OdarkThemeBackgroundColor=#FF111111 -OlightThemeBackgroundColor=#FFF9F9F9"
 
