@@ -1,6 +1,6 @@
-YouTube-Music-Extended (arm64-v8a): 8.26.51  
-YouTube-Extended: 20.26.45  
 YouTube-Music-Extended (arm-v7a): 8.26.51  
+YouTube-Extended: 20.25.37  
+YouTube-Music-Extended (arm64-v8a): 8.26.51  
 
 Use [zygisk-detach](https://github.com/j-hc/zygisk-detach) to detach root YouTube and YT Music from Play Store  
 
