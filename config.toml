@@ -8,7 +8,7 @@ patches-version = "dev"
 [YouTube-Extended]
 app-name = "YouTube"
 rv-brand = "ReVanced Extended"
-build-mode = "both"
+build-mode = "apk"
 version = "20.29.39"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
 excluded-patches = "'Custom branding icon for YouTube' 'Custom branding name for YouTube' 'Custom header for YouTube'"
@@ -18,7 +18,7 @@ patcher-args = "-e 'Theme' -OdarkThemeBackgroundColor=#FF111111 -OlightThemeBack
 [YouTube-Music-Extended]
 app-name = "YouTube Music"
 rv-brand = "ReVanced Extended"
-build-mode = "both"
+build-mode = "apk"
 arch = "both"
 version = "8.26.51"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube-music"
