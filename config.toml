@@ -3,7 +3,7 @@ parallel-jobs = 8
 
 patches-source = "anddea/revanced-patches"
 cli-source = "inotia00/revanced-cli"
-patches-version = "dev"
+patches-version = "latest"
 
 [YouTube-Extended]
 app-name = "YouTube"
@@ -13,7 +13,7 @@ version = "20.25.37"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/google-inc/youtube"
 excluded-patches = "'Custom branding icon for YouTube' 'Custom branding name for YouTube' 'Custom header for YouTube'"
 included-patches = "'Visual preferences icons for YouTube' 'Return YouTube Username'"
-patcher-args = "-e 'Theme' -OdarkThemeBackgroundColor=#FF111111 -OlightThemeBackgroundColor=#FFF9F9F9"
+patcher-args = "-e 'Theme' -OdarkThemeBackgroundColor=#FF121212 -OlightThemeBackgroundColor=#FFF9F9F9"
 
 [YouTube-Music-Extended]
 app-name = "YouTube Music"
