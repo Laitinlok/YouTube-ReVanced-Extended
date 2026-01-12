@@ -1,6 +1,6 @@
 {
-  "version": "v8.30.54 (patches dev.9)",
-  "versionCode": 49,
-  "zipUrl": "https://github.com/Laitinlok/YouTube-ReVanced-Extended/releases/download/49/youtube-music-revanced-extended-magisk-v8.30.54-arm-v7a.zip",
+  "version": "v8.30.54 (patches 3.15.0.rvp)",
+  "versionCode": 50,
+  "zipUrl": "https://github.com/Laitinlok/YouTube-ReVanced-Extended/releases/download/50/youtube-music-revanced-extended-magisk-v8.30.54-arm-v7a.zip",
   "changelog": "https://raw.githubusercontent.com/Laitinlok/YouTube-ReVanced-Extended/update/build.md"
 }
