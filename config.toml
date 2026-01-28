@@ -2,7 +2,7 @@ enable-magisk-update = true   # set this to false if you do not want to receive 
 parallel-jobs = 8
 
 patches-source = "MorpheApp/morphe-patches"
-cli-source = "inotia00/revanced-cli"
+cli-source = "MorpheApp/morphe-cli"
 patches-version = "latest"
 
 [YouTube-Extended]
