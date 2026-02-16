@@ -1,6 +1,5 @@
-YouTube-Music-Extended (arm64-v8a): 8.40.54  
-YouTube-Extended: 21.04.223  
 YouTube-Music-Extended (arm-v7a): 8.40.54  
+YouTube-Music-Extended (arm64-v8a): 8.40.54  
 
 Use [zygisk-detach](https://github.com/j-hc/zygisk-detach) to detach root YouTube and YT Music from Play Store  
 
@@ -9,7 +8,7 @@ Install [MicroG](https://github.com/WSTxda/MicroG-RE/releases) for non-root YouT
 [YouTube-ReVanced-Extended](https://github.com/MANCrimSon/YouTube-ReVanced-Extended)
   
 CLI: MorpheApp/morphe-cli-1.3.0-all.jar  
-Patches: MorpheApp/patches-1.11.0-dev.10.mpp  
-[Changelog](https://github.com/MorpheApp/morphe-patches/releases/tag/v1.11.0-dev.10)
+Patches: MorpheApp/patches-1.14.0-dev.5.mpp  
+[Changelog](https://github.com/MorpheApp/morphe-patches/releases/tag/v1.14.0-dev.5)
 
 CLI: MorpheApp/morphe-cli-1.3.0-all.jar    
