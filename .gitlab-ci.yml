@@ -127,52 +127,6 @@ build-modules:
              "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${NEXT_VER_CODE}/assets/links"
       done
 
-    # ── Update changelog + Magisk update JSON on the `update` branch ─────────
-    # Equivalent of "Update changelog and Magisk update json" step
-    # + stefanzweifel/git-auto-commit-action@v5.
-    - |
-      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
-      git config user.email "ci-bot@gitlab.local"
-      git config user.name  "GitLab CI Bot"
-
-      # Switch to (or create orphan) the `update` branch
-      git fetch origin update || true
-      git checkout update 2>/dev/null || git switch --discard-changes --orphan update
-
-      cp -f build.tmp build.md
-
-      get_update_json() {
-        echo "{
-          \"version\": \"$1\",
-          \"versionCode\": ${NEXT_VER_CODE},
-          \"zipUrl\": \"$2\",
-          \"changelog\": \"${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/raw/update/build.md\"
-        }"
-      }
-
-      cd build || { echo "build folder not found"; exit 1; }
-      for OUTPUT in *magisk*.zip; do
-        [ "$OUTPUT" = "*magisk*.zip" ] && continue
-        ZIP_S=$(unzip -p "$OUTPUT" module.prop)
-        UPDATE_JSON=$(echo "$ZIP_S" | grep updateJson) || continue
-        UPDATE_JSON="${UPDATE_JSON##*/}"
-        VER=$(echo "$ZIP_S" | grep version=)
-        VER="${VER##*=}"
-        DLURL="${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/releases/${NEXT_VER_CODE}/downloads/${OUTPUT}"
-        get_update_json "$VER" "$DLURL" > "../${UPDATE_JSON}"
-      done
-      cd ..
-
-      find . -name "*-update.json" | grep . || : > dummy-update.json
-
-      git add build.md *-update.json dummy-update.json 2>/dev/null || true
-      git diff --cached --quiet || \
-        git commit -m "Bump version ${NEXT_VER_CODE}"
-
-      # Push using CI_JOB_TOKEN for authentication
-      git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" \
-               HEAD:update
-
   # Persist build.env so NEXT_VER_CODE is available to downstream jobs
   artifacts:
     reports:
