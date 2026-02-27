@@ -20,6 +20,8 @@ default:
 
 # ─── Build job ────────────────────────────────────────────────────────────────
 build-modules:
+  variables:
+    GITHUB_TOKEN: $GITHUB_TOKEN   # maps the CI variable into the env
   stage: build
 
   # Equivalent of "runs-on: ubuntu-latest"
