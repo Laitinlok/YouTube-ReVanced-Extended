@@ -1,0 +1,236 @@
+# .gitlab-ci.yml
+# Equivalent of the "Build Modules" GitHub Actions workflow.
+# Trigger via:
+#   - Pipeline API / UI  (equivalent of workflow_dispatch)
+#   - Downstream pipeline trigger (equivalent of workflow_call with from_ci input)
+#
+# Set these CI/CD variables in GitLab project settings:
+#   TG_TOKEN  — Telegram bot token (masked)
+#   FROM_CI   — "true" or "false" (set at trigger time; defaults to "true")
+
+stages:
+  - build
+  - release
+  - notify
+
+# ─── Reusable defaults ────────────────────────────────────────────────────────
+default:
+  image: ubuntu-latest   # GitLab SaaS: use "ubuntu-latest" tag on shared runners
+                         # Self-managed: map to a runner with the correct tag
+
+# ─── Build job ────────────────────────────────────────────────────────────────
+build-modules:
+  stage: build
+
+  # Equivalent of "runs-on: ubuntu-latest"
+  # On GitLab SaaS the shared runner already provides Ubuntu.
+  # Add `tags: [your-runner-tag]` if you use self-managed runners.
+
+  # Equivalent of workflow_dispatch + workflow_call triggers:
+  #   $CI_PIPELINE_SOURCE == "web"       → manual UI run (workflow_dispatch)
+  #   $CI_PIPELINE_SOURCE == "pipeline"  → triggered by upstream pipeline (workflow_call)
+  #   $CI_PIPELINE_SOURCE == "push"      → normal push (optional, remove if unwanted)
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+  before_script:
+    # Install Java 17 (Zulu) — replaces actions/setup-java@v4
+    - apt-get update -qq && apt-get install -y -qq curl gnupg unzip git jq openssl
+    - curl -sL https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg
+    - echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
+        > /etc/apt/sources.list.d/zulu.list
+    - apt-get update -qq && apt-get install -y -qq zulu17-jdk
+    - java -version
+
+    # Full checkout with submodules — replaces actions/checkout@v4
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+    - git fetch --unshallow || true     # equivalent of fetch-depth: 0
+    - git submodule update --init --recursive
+
+  script:
+    # ── Update config (only when FROM_CI is true, default true) ──────────────
+    # Equivalent of the "Update config" step (if: ${{ inputs.from_ci }})
+    - |
+      FROM_CI="${FROM_CI:-true}"
+      if [ "$FROM_CI" = "true" ]; then
+        if git checkout origin/update build.md 2>/dev/null; then
+          UPDATE_CFG=$(./build.sh config.toml --config-update)
+          if [ "$UPDATE_CFG" ]; then
+            echo "$UPDATE_CFG" > config.json
+          fi
+        fi
+      fi
+
+    # ── Get next version code ─────────────────────────────────────────────────
+    # Equivalent of "Get next version code" step.
+    # Uses GitLab Releases API instead of `gh release list`.
+    - |
+      LATEST_TAG=$(curl -s --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases" \
+        | jq -r '.[0].tag_name // "0"')
+      if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then LATEST_TAG=0; fi
+      NEXT_VER_CODE=$((LATEST_TAG + 1))
+      echo "NEXT_VER_CODE=$NEXT_VER_CODE"
+      # Export for use in later script steps and artifacts
+      echo "NEXT_VER_CODE=$NEXT_VER_CODE" >> build.env
+
+    # ── Build modules/APKs ────────────────────────────────────────────────────
+    - |
+      export NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      export GITHUB_TOKEN="$CI_JOB_TOKEN"
+      export GITHUB_REPOSITORY="$CI_PROJECT_PATH"
+      if [ -f "config.json" ]; then ./build.sh config.json; else ./build.sh config.toml; fi
+
+    # ── Capture build log ─────────────────────────────────────────────────────
+    # Equivalent of the "Get output" step.
+    - cp -f build.md build.tmp
+
+    # ── Create / upload GitLab release ───────────────────────────────────────
+    # Equivalent of svenstaro/upload-release-action@v2.
+    # Step 1: Create the release with the changelog body.
+    - |
+      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      BUILD_LOG=$(cat build.md)
+      curl -s --request POST \
+           --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+           --header "Content-Type: application/json" \
+           --data "{
+             \"name\": \"ReVanced\",
+             \"tag_name\": \"${NEXT_VER_CODE}\",
+             \"description\": $(echo "$BUILD_LOG" | jq -Rs .)
+           }" \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"
+
+    # Step 2: Upload every file in ./build/ as a release asset.
+    - |
+      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      for OUTPUT in ./build/*; do
+        [ -f "$OUTPUT" ] || continue
+        FILENAME=$(basename "$OUTPUT")
+        # Upload the file as a generic package, then link it to the release.
+        UPLOAD_RESP=$(curl -s --request POST \
+          --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+          --form "file=@${OUTPUT}" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/uploads")
+        FILE_URL=$(echo "$UPLOAD_RESP" | jq -r '.full_path')
+        FULL_URL="${CI_SERVER_URL}${FILE_URL}"
+        curl -s --request POST \
+             --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+             --header "Content-Type: application/json" \
+             --data "{
+               \"name\": \"${FILENAME}\",
+               \"url\": \"${FULL_URL}\"
+             }" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${NEXT_VER_CODE}/assets/links"
+      done
+
+    # ── Update changelog + Magisk update JSON on the `update` branch ─────────
+    # Equivalent of "Update changelog and Magisk update json" step
+    # + stefanzweifel/git-auto-commit-action@v5.
+    - |
+      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      git config user.email "ci-bot@gitlab.local"
+      git config user.name  "GitLab CI Bot"
+
+      # Switch to (or create orphan) the `update` branch
+      git fetch origin update || true
+      git checkout update 2>/dev/null || git switch --discard-changes --orphan update
+
+      cp -f build.tmp build.md
+
+      get_update_json() {
+        echo "{
+          \"version\": \"$1\",
+          \"versionCode\": ${NEXT_VER_CODE},
+          \"zipUrl\": \"$2\",
+          \"changelog\": \"${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/raw/update/build.md\"
+        }"
+      }
+
+      cd build || { echo "build folder not found"; exit 1; }
+      for OUTPUT in *magisk*.zip; do
+        [ "$OUTPUT" = "*magisk*.zip" ] && continue
+        ZIP_S=$(unzip -p "$OUTPUT" module.prop)
+        UPDATE_JSON=$(echo "$ZIP_S" | grep updateJson) || continue
+        UPDATE_JSON="${UPDATE_JSON##*/}"
+        VER=$(echo "$ZIP_S" | grep version=)
+        VER="${VER##*=}"
+        DLURL="${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/releases/${NEXT_VER_CODE}/downloads/${OUTPUT}"
+        get_update_json "$VER" "$DLURL" > "../${UPDATE_JSON}"
+      done
+      cd ..
+
+      find . -name "*-update.json" | grep . || : > dummy-update.json
+
+      git add build.md *-update.json dummy-update.json 2>/dev/null || true
+      git diff --cached --quiet || \
+        git commit -m "Bump version ${NEXT_VER_CODE}"
+
+      # Push using CI_JOB_TOKEN for authentication
+      git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" \
+               HEAD:update
+
+  # Persist build.env so NEXT_VER_CODE is available to downstream jobs
+  artifacts:
+    reports:
+      dotenv: build.env
+    paths:
+      - build.tmp
+      - build/
+    when: always
+
+# ─── Telegram notification job ────────────────────────────────────────────────
+# Equivalent of the "Report to Telegram" step.
+# Runs only when TG_TOKEN is set (mirrors `if: env.TG_TOKEN != null`).
+notify-telegram:
+  stage: notify
+  needs:
+    - job: build-modules
+      artifacts: true
+  rules:
+    - if: '$TG_TOKEN != null && $TG_TOKEN != ""'
+  script:
+    - |
+      cd build || { echo "build folder not found"; exit 1; }
+
+      TG_CHAT="@rvc_magisk"
+      NL=$'\n'
+      APKS=""
+      MODULES=""
+
+      for OUTPUT in *; do
+        DL_URL="${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/releases/${NEXT_VER_CODE}/downloads/${OUTPUT}"
+        if [[ $OUTPUT = *.apk ]]; then
+          APKS+="${NL}📦[${OUTPUT}](${DL_URL})"
+        elif [[ $OUTPUT = *.zip ]]; then
+          MODULES+="${NL}📦[${OUTPUT}](${DL_URL})"
+        fi
+      done
+
+      MODULES=${MODULES#"$NL"}
+      APKS=${APKS#"$NL"}
+
+      BODY="$(sed 's/^\* \*\*/↪ \*\*/g; s/^\* `/↪ \*\*/g; s/`/\*/g; s/^\* /↪/g; s/\*\*/\*/g; s/###//g; s/^- /↪ /g; /^==/d;' ../build.tmp)"
+
+      MSG="*New build!*
+
+      ${BODY}
+
+      *▼ Download Links:*
+      Modules:
+      ${MODULES}
+
+      APKs:
+      ${APKS}
+      "
+
+      MSG=${MSG:0:9450}
+      POST="https://api.telegram.org/bot${TG_TOKEN}/sendMessage"
+      curl -X POST \
+        --data-urlencode "parse_mode=Markdown" \
+        --data-urlencode "disable_web_page_preview=true" \
+        --data-urlencode "text=${MSG}" \
+        --data-urlencode "chat_id=${TG_CHAT}" \
+        "$POST"
