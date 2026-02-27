@@ -37,7 +37,6 @@ build-modules:
 
   variables:
     GITHUB_TOKEN: $GITHUB_TOKEN   # maps the CI variable into the env
-    GH_TOKEN: $GITHUB_TOKEN
 
   before_script:
     # Install Java 17 (Zulu) — replaces actions/setup-java@v4
@@ -72,6 +71,7 @@ build-modules:
       if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then LATEST_TAG=0; fi
       NEXT_VER_CODE=$((LATEST_TAG + 1))
       echo "NEXT_VER_CODE=$NEXT_VER_CODE"
+      echo "NEXT_VER_CODE=$NEXT_VER_CODE" >> build.env
       # Export for use in later script steps and artifacts
       echo "NEXT_VER_CODE=$NEXT_VER_CODE" >> build.env
 
