@@ -15,7 +15,7 @@ stages:
 
 # ─── Reusable defaults ────────────────────────────────────────────────────────
 default:
-  image: ubuntu-latest   # GitLab SaaS: use "ubuntu-latest" tag on shared runners
+  image: ubuntu:latest   # GitLab SaaS: use "ubuntu-latest" tag on shared runners
                          # Self-managed: map to a runner with the correct tag
 
 # ─── Build job ────────────────────────────────────────────────────────────────
