@@ -37,6 +37,7 @@ build-modules:
 
   variables:
     GITHUB_TOKEN: $GITHUB_TOKEN   # maps the CI variable into the env
+    GH_TOKEN: $GITHUB_TOKEN
 
   before_script:
     # Install Java 17 (Zulu) — replaces actions/setup-java@v4
@@ -56,15 +57,10 @@ build-modules:
     # ── Update config (only when FROM_CI is true, default true) ──────────────
     # Equivalent of the "Update config" step (if: ${{ inputs.from_ci }})
     - |
-      FROM_CI="${FROM_CI:-true}"
-      if [ "$FROM_CI" = "true" ]; then
-        if git checkout origin/update build.md 2>/dev/null; then
-          UPDATE_CFG=$(./build.sh config.toml --config-update)
-          if [ "$UPDATE_CFG" ]; then
-            echo "$UPDATE_CFG" > config.json
-          fi
-        fi
-      fi
+      TAG=$(gh release list -L 1 | awk -F '\t' '{print $3}')
+      if [ -z "$TAG" ]; then TAG=0; fi
+      echo "NEXT_VER_CODE=$((TAG + 1))" >> $GITHUB_OUTPUT
+
 
     # ── Get next version code ─────────────────────────────────────────────────
     # Equivalent of "Get next version code" step.
