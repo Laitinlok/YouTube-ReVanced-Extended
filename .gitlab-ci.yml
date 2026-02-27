@@ -41,7 +41,7 @@ build-modules:
 
   before_script:
     # Install Java 17 (Zulu) — replaces actions/setup-java@v4
-    - apt-get update -qq && apt-get install -y -qq curl gnupg unzip git jq openssl zip
+    - apt-get update -qq && apt-get install -y -qq curl gnupg unzip git jq openssl zip gh
     - curl -sL https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg
     - echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
         > /etc/apt/sources.list.d/zulu.list
