@@ -82,7 +82,7 @@ build-modules:
     # ── Build modules/APKs ────────────────────────────────────────────────────
     - |
       export NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
-      export GITHUB_TOKEN="$CI_JOB_TOKEN"
+      export GITHUB_TOKEN="$GITHUB_TOKEN"
       export GITHUB_REPOSITORY="$CI_PROJECT_PATH"
       if [ -f "config.json" ]; then ./build.sh config.json; else ./build.sh config.toml; fi
 
