@@ -11,7 +11,6 @@
 stages:
   - build
   - release
-  - notify
 
 # ─── Reusable defaults ────────────────────────────────────────────────────────
 default:
@@ -182,57 +181,3 @@ build-modules:
       - build.tmp
       - build/
     when: always
-
-# ─── Telegram notification job ────────────────────────────────────────────────
-# Equivalent of the "Report to Telegram" step.
-# Runs only when TG_TOKEN is set (mirrors `if: env.TG_TOKEN != null`).
-notify-telegram:
-  stage: notify
-  needs:
-    - job: build-modules
-      artifacts: true
-  rules:
-    - if: '$TG_TOKEN != null && $TG_TOKEN != ""'
-  script:
-    - |
-      cd build || { echo "build folder not found"; exit 1; }
-
-      TG_CHAT="@rvc_magisk"
-      NL=$'\n'
-      APKS=""
-      MODULES=""
-
-      for OUTPUT in *; do
-        DL_URL="${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/releases/${NEXT_VER_CODE}/downloads/${OUTPUT}"
-        if [[ $OUTPUT = *.apk ]]; then
-          APKS+="${NL}📦[${OUTPUT}](${DL_URL})"
-        elif [[ $OUTPUT = *.zip ]]; then
-          MODULES+="${NL}📦[${OUTPUT}](${DL_URL})"
-        fi
-      done
-
-      MODULES=${MODULES#"$NL"}
-      APKS=${APKS#"$NL"}
-
-      BODY="$(sed 's/^\* \*\*/↪ \*\*/g; s/^\* `/↪ \*\*/g; s/`/\*/g; s/^\* /↪/g; s/\*\*/\*/g; s/###//g; s/^- /↪ /g; /^==/d;' ../build.tmp)"
-
-      MSG="*New build!*
-
-      ${BODY}
-
-      *▼ Download Links:*
-      Modules:
-      ${MODULES}
-
-      APKs:
-      ${APKS}
-      "
-
-      MSG=${MSG:0:9450}
-      POST="https://api.telegram.org/bot${TG_TOKEN}/sendMessage"
-      curl -X POST \
-        --data-urlencode "parse_mode=Markdown" \
-        --data-urlencode "disable_web_page_preview=true" \
-        --data-urlencode "text=${MSG}" \
-        --data-urlencode "chat_id=${TG_CHAT}" \
-        "$POST"
