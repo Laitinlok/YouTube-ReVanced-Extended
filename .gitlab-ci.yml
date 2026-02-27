@@ -35,9 +35,6 @@ build-modules:
     - if: '$CI_PIPELINE_SOURCE == "pipeline"'
     - if: '$CI_PIPELINE_SOURCE == "push"'
 
-  variables:
-    GITHUB_TOKEN: $GITHUB_TOKEN   # maps the CI variable into the env
-
   before_script:
     # Install Java 17 (Zulu) — replaces actions/setup-java@v4
     - apt-get update -qq && apt-get install -y -qq curl gnupg unzip git jq openssl zip gh
