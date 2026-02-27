@@ -95,7 +95,7 @@ build-modules:
       NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
       BUILD_LOG=$(cat build.md)
       curl -s --request POST \
-           --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+           --header "JOB-TOKEN: $CI_JOB_TOKEN" \
            --header "Content-Type: application/json" \
            --data "{
              \"name\": \"ReVanced\",
@@ -112,13 +112,13 @@ build-modules:
         FILENAME=$(basename "$OUTPUT")
         # Upload the file as a generic package, then link it to the release.
         UPLOAD_RESP=$(curl -s --request POST \
-          --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
           --form "file=@${OUTPUT}" \
           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/uploads")
         FILE_URL=$(echo "$UPLOAD_RESP" | jq -r '.full_path')
         FULL_URL="${CI_SERVER_URL}${FILE_URL}"
         curl -s --request POST \
-             --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+             --header "JOB-TOKEN: $CI_JOB_TOKEN" \
              --header "Content-Type: application/json" \
              --data "{
                \"name\": \"${FILENAME}\",
