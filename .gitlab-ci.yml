@@ -96,15 +96,13 @@ build-modules:
     # Equivalent of svenstaro/upload-release-action@v2.
     # Step 1: Create the release with the changelog body.
     - |
-      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2 | tr -d '[:space:]')
       echo "Creating release for tag: $NEXT_VER_CODE"
 
       if [ -z "$NEXT_VER_CODE" ]; then
         echo "ERROR: NEXT_VER_CODE is empty before creating release"
         exit 1
       fi
-      
-      BUILD_LOG=$(cat build.md)
 
       CREATE_JSON=$(jq -n \
         --arg tag_name "$NEXT_VER_CODE" \
@@ -123,11 +121,10 @@ build-modules:
       echo "$CREATE_JSON"
 
       CREATE_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
-        --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+        --header "PRIVATE-TOKEN: $PROJECT_TOKEN" \
         --header "Content-Type: application/json" \
         --data "$CREATE_JSON" \
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases")
-
 
       CREATE_BODY=$(echo "$CREATE_RESP" | sed '$d')
       CREATE_CODE=$(echo "$CREATE_RESP" | tail -n1)
@@ -141,15 +138,16 @@ build-modules:
 
     # Step 2: Upload every file in ./build/ as a release asset.
     - |
-      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2 | tr -d '[:space:]')
       echo "Attaching assets to release tag: $NEXT_VER_CODE"
+
       for OUTPUT in ./build/*; do
         [ -f "$OUTPUT" ] || continue
         FILENAME=$(basename "$OUTPUT")
         echo "Uploading asset: $FILENAME"
 
         UPLOAD_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
-          --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+          --header "PRIVATE-TOKEN: $PROJECT_TOKEN" \
           --form "file=@${OUTPUT}" \
           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/uploads")
 
@@ -166,7 +164,7 @@ build-modules:
         FULL_URL="${CI_SERVER_URL}${FILE_URL}"
 
         LINK_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
-          --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+          --header "PRIVATE-TOKEN: $PROJECT_TOKEN" \
           --header "Content-Type: application/json" \
           --data "{
             \"name\": \"${FILENAME}\",
