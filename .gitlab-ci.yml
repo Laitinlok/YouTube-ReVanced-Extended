@@ -66,7 +66,6 @@ build-modules:
     # ── Get next version code ─────────────────────────────────────────────────
     # Equivalent of "Get next version code" step.
     # Uses GitLab Releases API instead of `gh release list`.
-    - echo "$CI_API_V4_URL"
     - |
       LATEST_TAG=$(curl -s --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases" \
@@ -92,6 +91,7 @@ build-modules:
     # ── Create / upload GitLab release ───────────────────────────────────────
     # Equivalent of svenstaro/upload-release-action@v2.
     # Step 1: Create the release with the changelog body.
+    - echp "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"
     - |
       NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
       BUILD_LOG=$(cat build.md)
@@ -103,7 +103,7 @@ build-modules:
              \"tag_name\": \"${NEXT_VER_CODE}\",
              \"description\": $(echo "$BUILD_LOG" | jq -Rs .)
            }" \
-           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"
+           
 
     # Step 2: Upload every file in ./build/ as a release asset.
     - |
