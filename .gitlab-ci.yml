@@ -106,16 +106,28 @@ build-modules:
       
       BUILD_LOG=$(cat build.md)
 
+      CREATE_JSON=$(jq -n \
+        --arg tag_name "$NEXT_VER_CODE" \
+        --arg ref "$CI_COMMIT_SHA" \
+        --arg name "ReVanced" \
+        --arg desc "$(cat build.md)" \
+        '{
+          tag_name: $tag_name,
+          ref: $ref,
+          name: $name,
+          description: $desc
+        }'
+      )
+
+      echo "Create release payload:"
+      echo "$CREATE_JSON"
+
       CREATE_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
         --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
         --header "Content-Type: application/json" \
-        --data "{
-          \"name\": \"ReVanced\",
-          \"tag_name\": \"${NEXT_VER_CODE}\",
-          \"ref\": \"${CI_COMMIT_SHA}\",
-          \"description\": ${BUILD_LOG_JSON}
-        }" \
+        --data "$CREATE_JSON" \
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases")
+
 
       CREATE_BODY=$(echo "$CREATE_RESP" | sed '$d')
       CREATE_CODE=$(echo "$CREATE_RESP" | tail -n1)
