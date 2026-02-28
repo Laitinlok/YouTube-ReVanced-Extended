@@ -66,6 +66,7 @@ build-modules:
     # ── Get next version code ─────────────────────────────────────────────────
     # Equivalent of "Get next version code" step.
     # Uses GitLab Releases API instead of `gh release list`.
+    - echo "$CI_API_V4_URL"
     - |
       LATEST_TAG=$(curl -s --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases" \
