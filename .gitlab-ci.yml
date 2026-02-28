@@ -106,37 +106,71 @@ build-modules:
       
       BUILD_LOG=$(cat build.md)
 
-      curl -s --request POST \
-           --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-           --header "Content-Type: application/json" \
-           --data "{
-             \"name\": \"ReVanced\",
-             \"tag_name\": \"${NEXT_VER_CODE}\",
-             \"description\": $(echo "$BUILD_LOG" | jq -Rs .)
-           }" \
-           
+      CREATE_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
+        --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+        --header "Content-Type: application/json" \
+        --data "{
+          \"name\": \"ReVanced\",
+          \"tag_name\": \"${NEXT_VER_CODE}\",
+          \"ref\": \"${CI_COMMIT_SHA}\",
+          \"description\": ${BUILD_LOG_JSON}
+        }" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases")
+
+      CREATE_BODY=$(echo "$CREATE_RESP" | sed '$d')
+      CREATE_CODE=$(echo "$CREATE_RESP" | tail -n1)
+
+      if [ "$CREATE_CODE" != "201" ] && [ "$CREATE_CODE" != "200" ]; then
+        echo "ERROR: failed to create release, HTTP $CREATE_CODE"
+        echo "$CREATE_BODY"
+        exit 1
+      fi
+      echo "Release created."
 
     # Step 2: Upload every file in ./build/ as a release asset.
     - |
       NEXT_VER_CODE=$(grep NEXT_VER_CODE build.env | cut -d= -f2)
+      echo "Attaching assets to release tag: $NEXT_VER_CODE"
       for OUTPUT in ./build/*; do
         [ -f "$OUTPUT" ] || continue
         FILENAME=$(basename "$OUTPUT")
-        # Upload the file as a generic package, then link it to the release.
-        UPLOAD_RESP=$(curl -s --request POST \
-          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        echo "Uploading asset: $FILENAME"
+
+        UPLOAD_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
+          --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
           --form "file=@${OUTPUT}" \
           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/uploads")
-        FILE_URL=$(echo "$UPLOAD_RESP" | jq -r '.full_path')
+
+        UPLOAD_BODY=$(echo "$UPLOAD_RESP" | sed '$d')
+        UPLOAD_CODE=$(echo "$UPLOAD_RESP" | tail -n1)
+
+        if [ "$UPLOAD_CODE" != "201" ] && [ "$UPLOAD_CODE" != "200" ]; then
+          echo "ERROR: upload failed for ${FILENAME}, HTTP $UPLOAD_CODE"
+          echo "$UPLOAD_BODY"
+          exit 1
+        fi
+
+        FILE_URL=$(echo "$UPLOAD_BODY" | jq -r '.full_path')
         FULL_URL="${CI_SERVER_URL}${FILE_URL}"
-        curl -s --request POST \
-             --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-             --header "Content-Type: application/json" \
-             --data "{
-               \"name\": \"${FILENAME}\",
-               \"url\": \"${FULL_URL}\"
-             }" \
-             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${NEXT_VER_CODE}/assets/links"
+
+        LINK_RESP=$(curl -sS -w "\n%{http_code}" --request POST \
+          --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+          --header "Content-Type: application/json" \
+          --data "{
+            \"name\": \"${FILENAME}\",
+            \"url\": \"${FULL_URL}\",
+            \"link_type\": \"package\"
+          }" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${NEXT_VER_CODE}/assets/links")
+
+        LINK_BODY=$(echo "$LINK_RESP" | sed '$d')
+        LINK_CODE=$(echo "$LINK_RESP" | tail -n1)
+
+        if [ "$LINK_CODE" != "201" ] && [ "$LINK_CODE" != "200" ]; then
+          echo "ERROR: asset link failed for ${FILENAME}, HTTP $LINK_CODE"
+          echo "$LINK_BODY"
+          exit 1
+        fi
       done
 
   # Persist build.env so NEXT_VER_CODE is available to downstream jobs
