@@ -9,7 +9,7 @@ Install [MicroG](https://github.com/WSTxda/MicroG-RE/releases) for non-root YouT
 [YouTube-ReVanced-Extended](https://github.com/MANCrimSon/YouTube-ReVanced-Extended)
   
 CLI: MorpheApp/morphe-cli-1.4.0-all.jar  
-Patches: MorpheApp/patches-1.16.0-dev.9.mpp  
-[Changelog](https://github.com/MorpheApp/morphe-patches/releases/tag/v1.16.0-dev.9)
+Patches: MorpheApp/patches-1.16.1-dev.2.mpp  
+[Changelog](https://github.com/MorpheApp/morphe-patches/releases/tag/v1.16.1-dev.2)
 
 CLI: MorpheApp/morphe-cli-1.4.0-all.jar    
